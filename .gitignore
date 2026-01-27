@@ -1,0 +1,13 @@
+# Python internals
+__pycache__/
+*.py[cod]
+*.so
+
+# PyInstaller
+build/
+dist/
+# Note: We keep *.spec files to version control build configurations
+# *.spec
+
+# Documentation
+doc/
