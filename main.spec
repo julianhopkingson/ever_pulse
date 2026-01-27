@@ -1,39 +1,43 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+block_cipher = None
 
 a = Analysis(
-    ['mouse_mover.py'],
+    ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('assets/mouse-mover.ico', 'assets'), ('assets/language.ini', 'assets')],
+    datas=[('assets/ever-pulse.ico', 'assets'), ('assets/language.ini', 'assets')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['pandas', 'numpy', 'PIL', 'cv2', 'pyautogui', 'pyscreeze', 'PyQt5', 'win32com'],
+    excludes=['tkinter'],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
     noarchive=False,
-    optimize=0,
 )
-pyz = PYZ(a.pure)
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(
     pyz,
     a.scripts,
     a.binaries,
+    a.zipfiles,
     a.datas,
     [],
-    name='mouse_mover',
+    name='ever_pulse',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=False,
+    upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,
+    console=False, 
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['assets/mouse-mover.ico'],
+    icon='assets/ever-pulse.ico',
 )
