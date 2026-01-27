@@ -14,6 +14,18 @@ class LASTINPUTINFO(Structure):
     _fields_ = [("cbSize", c_uint), ("dwTime", c_uint)]
 
 
+
+def resource_path(relative_path):
+    """ 获取资源的绝对路径，兼容 Dev 和 PyInstaller """
+    try:
+        # PyInstaller 创建临时文件夹，将路径存储在 _MEIPASS 中
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+
 def get_idle_duration():
     """返回自上次用户输入（鼠标/键盘）以来的空闲秒数"""
     lii = LASTINPUTINFO()
@@ -59,7 +71,9 @@ class Translations:
     def __init__(self, app_path):
         self.languages = {}
         self.current_language = "中文"  # 默认语言
-        self.language_file_path = os.path.join(app_path, "language.ini")
+        self.current_language = "中文"  # 默认语言
+        # 修改：从内嵌资源读取 language.ini
+        self.language_file_path = resource_path(os.path.join("assets", "language.ini"))
 
         # 加载语言文件
         self.load_language_file()
@@ -235,7 +249,12 @@ class MouseMoverApp:
         else:
             self.app_path = os.path.dirname(os.path.abspath(__file__))
 
-        self.config_path = os.path.join(self.app_path, "config.ini")
+        # 修改：用户配置存放在 config 子目录
+        self.config_dir = os.path.join(self.app_path, "config")
+        if not os.path.exists(self.config_dir):
+            os.makedirs(self.config_dir)
+
+        self.config_path = os.path.join(self.config_dir, "config.ini")
 
         # 初始化翻译系统
         self.translations = Translations(self.app_path)
@@ -337,9 +356,13 @@ class MouseMoverApp:
         self.root.title(self.translations.get("app_title"))
 
         # 设置窗口图标
-        icon_path = os.path.join(self.app_path, "mouse-mover.ico")
-        if os.path.exists(icon_path):
+        # 设置窗口图标
+        icon_path = resource_path(os.path.join("assets", "mouse-mover.ico")) # 使用 resource_path 获取内嵌或外部资源
+        # if os.path.exists(icon_path): # 内嵌资源必然存在（如果打包正确），或者在Dev模式下存在
+        try:
             self.root.iconbitmap(icon_path)
+        except Exception:
+            pass # 如果图标加载失败，不影响程序运行
 
         # 创建标题标签
         title_label = tk.Label(self.root, text=self.translations.get("app_title"), font=("", 16, "bold"))

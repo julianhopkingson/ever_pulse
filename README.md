@@ -4,7 +4,7 @@
 
 A lightweight, Python-based utility designed to prevent your Windows computer from going to sleep or locking the screen by simulating micro mouse movements.
 
-![UI Preview](doc/v1.0_ui_preview.png)
+![UI Preview](assets/v1.0_ui_preview.png)
 
 ## Features
 
@@ -26,6 +26,8 @@ A lightweight, Python-based utility designed to prevent your Windows computer fr
 4.  Click **Start**.
 
 ## Configuration
+
+> **Note**: The configuration file is automatically generated at `config/config.ini`.
 
 - **Interval**: How often the mouse moves (in seconds).
 - **Idle Time**: How long you must be inactive before the tool starts moving the mouse.

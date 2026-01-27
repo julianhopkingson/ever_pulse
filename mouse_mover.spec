@@ -5,7 +5,7 @@ a = Analysis(
     ['mouse_mover.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('assets/mouse-mover.ico', 'assets'), ('assets/language.ini', 'assets')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -35,5 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['mouse-mover.ico'],
+    icon=['assets/mouse-mover.ico'],
 )
