@@ -1,26 +1,37 @@
-# Mouse Mover
+# Ever Pulse
 
-[中文文档](README_zh.md)
+[中文文档](README_cn.md)
 
-A lightweight, Python-based utility designed to prevent your Windows computer from going to sleep or locking the screen by simulating micro mouse movements.
+**v2.2 (EverPulse - Tech Navy Edition)**
 
-![UI Preview](assets/v1.0_ui_preview.png)
+A modernized, premium utility designed to keep your Windows session active. Rebuilt with **PySide6** and "Crystal Navy" aesthetics.
+
+![UI Preview](assets/v2.0_ui_preview.png)
+
+*(Note: v2.2 UI updated with Ever Pulse branding)*
 
 ## Features
 
-- **Prevent Sleep/Lock**: Keeps your status "Online" on Teams, Slack, etc.
-- **Smart Idle Detection**: Only moves the mouse when you are idle. If you move the mouse or use the keyboard, it detects activity and pauses automatically.
-- **Scheduled Operation**: Set specific Start and End times. The tool will automatically start working and stop working at your defined hours.
-- **Invisible "Jiggle"**: The mouse moves slightly and immediately returns to the original position, making the movement practically invisible to the user.
-- **Multi-language Support**: Native support for **English** and **Chinese**.
-- **No External Dependencies**: Built with standard Python libraries (`tkinter`, `ctypes`), so no heavy `pip install` required.
+- **Premium UI**: "Crystal Green" aesthetic with Glassmorphism, real-time Dark/Light mode, and smooth animations.
+- **Smart Idle Detection**: Only moves mouse when you are idle (Idle Threshold setting).
+- **Scheduled Operation**: Auto-start and auto-stop at defined working hours.
+- **Invisible 'Jiggle'**: Micro-movements are practically invisible but keep status 'Online'.
+- **Bilingual Support**: Instant switching between **English** and **Chinese**.
+- **Portable & Persistent**: Single EXE file, saves settings permanently to `config/config.ini`.
+- **High Stability**: Robust `QPainter` rendering (ARGB Hex) prevents black screens and glitches.
 
 ## Usage
 
-1.  Ensure you have Python installed.
-2.  Run the script:
+1.  **Run directly**: Double-click `dist/ever_pulse.exe`.
+    *(Note: If updating, run `taskkill /F /IM ever_pulse.exe` first)*
+
+2.  **Build from Source**:
     ```bash
-    python mouse_mover.py
+    # Install dependencies
+    pip install -r requirements.txt
+    
+    # Build executable (clean build)
+    pyinstaller main.spec --clean --noconfirm
     ```
 3.  Set your desired **Start Time** and **End Time**.
 4.  Click **Start**.
@@ -35,4 +46,4 @@ A lightweight, Python-based utility designed to prevent your Windows computer fr
 
 ## License
 
-This project is open source.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
