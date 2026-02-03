@@ -17,6 +17,7 @@ A modernized, premium utility designed to keep your Windows session active. Rebu
 - **Window Memory**: Automatically remembers and restores window position from previous session.
 - **Bilingual Support**: Instant switching between **English** and **Chinese**.
 - **Portable & Persistent**: Single EXE file, saves settings to `config/config.ini`.
+- **Single Instance**: Robust single-instance support—launching again wakes up the existing window.
 - **High Stability**: Robust RGB rendering prevents black screens and glitches.
 
 ## 🏗️ Architecture

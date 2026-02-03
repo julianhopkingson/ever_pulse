@@ -163,10 +163,15 @@ class MainWindow(QMainWindow):
         self.combo_dir.blockSignals(True); self.combo_dir.clear(); self.combo_dir.addItems([_("up"), _("down"), _("left"), _("right")]); self.combo_dir.blockSignals(False)
         
     def change_language(self, text):
-        if self.i18n.set_language(text): self.retranslateUi(); self.config_mgr.set("language", text)
+        if self.i18n.set_language(text): 
+            self.retranslateUi()
+            self.config_mgr.set("language", text)
+            self.log_message(f"Language changed to {text}")
 
     def toggle_theme(self):
-        self.apply_theme("Dark" if self.theme_toggle.isChecked() else "Light")
+        new_theme = "Dark" if self.theme_toggle.isChecked() else "Light"
+        self.apply_theme(new_theme)
+        self.log_message(f"Theme changed to {new_theme}")
 
     def apply_theme(self, theme_name, force=False):
         if not force and self.current_theme_name == theme_name: return
@@ -253,6 +258,8 @@ class MainWindow(QMainWindow):
         if msg == "Ready.": return _("log_ready")
         if "Moved at" in msg: return _("log_moved").format(msg.split(" at ")[-1])
         if "Outside working hours" in msg: return _("log_waiting")
+        if "Theme changed to" in msg: return _("log_theme_changed").format(msg.split(" to ")[-1])
+        if "Language changed to" in msg: return _("log_lang_changed").format(msg.split(" to ")[-1])
         if "User active" in msg: 
             # Parse "User active (idle 0.0s), skipping..."
             try:
@@ -262,5 +269,13 @@ class MainWindow(QMainWindow):
                 return msg
         return msg
 
-    def log_error(self, msg): self.log_message(f"Err: {msg}"); self.stop_automation()
+    def log_error(self, msg): 
+        if msg.startswith("Config Error: "):
+            content = msg.split(": ", 1)[1]
+            translated = self.i18n.get("log_config_error").format(content)
+            self.log_message(translated)
+        else:
+            prefix = self.i18n.get("log_error_prefix")
+            self.log_message(f"{prefix}{msg}")
+        self.stop_automation()
     def closeEvent(self, ev): self.stop_automation(); self.save_ui_to_config(); self.config_mgr.save(); super().closeEvent(ev)
