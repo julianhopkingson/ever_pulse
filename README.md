@@ -2,23 +2,26 @@
 
 [中文文档](README_cn.md)
 
-**v2.0**
+**v2.2**
 
 A modernized, premium utility designed to keep your Windows session active. Rebuilt with **PySide6** and "Ever Pulse" tech-navy aesthetics.
 
 ![UI Preview](assets/v2.0_ui_preview.png)
 
-*(Note: v2.2 UI updated with Ever Pulse branding)*
-
 ## ✨ Features
 
 - **Premium UI**: "Ever Pulse" tech-navy design with Glassmorphism, real-time Dark/Light mode, and smooth animations.
 - **Integrated Logging**: Activity logs now presented in a cohesive glassmorphic card.
+- **Precision Alignment**: Automatically aligns the first move to the exact second for consistent minute-interval execution.
+- **Smart Scheduling**: 
+    - **Single Day**: Strict stop enforcement when time expires.
+    - **Cross Day**: Supports overnight sessions with configurable auto-shutdown upon completion.
+- **Improved Performance**: Systematic resource audit and optimization for minimal background footprint.
 - **Window Memory**: Automatically remembers and restores window position from previous session.
 - **Bilingual Support**: Instant switching between **English** and **Chinese**.
 - **Portable & Persistent**: Single EXE file, saves settings to `config/config.ini`.
 - **Single Instance**: Robust single-instance support—launching again wakes up the existing window.
-- **High Stability**: Robust RGB rendering prevents black screens and glitches.
+- **High Stability**: Robust RGB rendering and enhanced resource management prevent glitches.
 
 ## 🏗️ Architecture
 
@@ -37,7 +40,7 @@ ever_pulse/
 ├── core/               # Backend logic (Automation, ConfigMgr, I18n)
 ├── ui/                 # Frontend components (Themes, Crystal Widgets, Main Window)
 ├── main.py             # Application entry point
-└── main.spec           # PyInstaller build specification
+├── main.spec           # PyInstaller build specification
 ```
 
 ## 🛠️ Development & Setup
@@ -71,6 +74,7 @@ pyinstaller main.spec --clean --noconfirm
 - **Interval**: How often the mouse moves (in seconds).
 - **Idle Time**: How long you must be inactive before the tool starts moving the mouse.
 - **Direction & Pixels**: Customize the movement direction and distance.
+- **Auto Close**: Enable `auto_close_enabled` and set `auto_close_delay_seconds` (default 10s) in config.ini.
 
 ## 📄 License
 

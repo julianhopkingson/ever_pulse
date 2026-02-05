@@ -22,11 +22,22 @@ class ConfigManager:
         self.load_config()
 
     def load_config(self):
+        """
+        Returns:
+            str: status key ('status_config_loaded', 'status_config_created', or 'status_config_failed')
+            str: error message if failed, else None
+        """
+        status_key = "status_config_loaded"
+        error_msg = None
+        
         if os.path.exists(self.config_path):
             try:
                 self.config.read(self.config_path, encoding='utf-8')
-            except Exception:
-                pass
+            except Exception as e:
+                status_key = "status_config_failed"
+                error_msg = str(e)
+        else:
+             status_key = "status_config_created"
         
         if 'Settings' not in self.config:
             self.config['Settings'] = {}
@@ -40,13 +51,15 @@ class ConfigManager:
             'activity_threshold': '5',
             'theme': 'Light', # 新增：主题设置
             'auto_close_enabled': 'False',
-            'auto_close_delay_seconds': '0',
+            'auto_close_delay_seconds': '10',
             'window_x': '200', 'window_y': '200'
         }
         
         for key, value in defaults.items():
             if key not in self.config['Settings']:
                 self.config['Settings'][key] = value
+                
+        return status_key, error_msg
 
     def get(self, key, type_func=str):
         try:
@@ -59,8 +72,6 @@ class ConfigManager:
         self.config['Settings'][key] = str(value)
 
     def save(self):
-        try:
-            with open(self.config_path, 'w', encoding='utf-8') as f:
-                self.config.write(f)
-        except Exception as e:
-            print(f"Error saving config: {e}")
+        # Allow exception to propagate to UI
+        with open(self.config_path, 'w', encoding='utf-8') as f:
+            self.config.write(f)

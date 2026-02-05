@@ -48,6 +48,22 @@ class MainWindow(QMainWindow):
         self.load_settings_to_ui()
         self.retranslateUi()
         self.apply_theme(self.current_theme_name, force=True) 
+        
+        # Log config status
+        status_key, err = self.config_mgr.load_config()
+        if status_key == "status_config_failed":
+             msg = self.i18n.get(status_key).format(err)
+        else:
+             msg = self.i18n.get(status_key)
+        
+        # We can't log yet because log_message appends to widget, but widget is ready.
+        # But log_message calls _translate_log which might not expect these keys if we don't update it?
+        # Actually _translate_log is only called if we pass a raw string.
+        # If we pass localized string directly, we should bypass _translate_log logic or make log_message smart?
+        # Check log_message: it calls _translate_log unconditionallly.
+        # But _translate_log returns original msg if no match.
+        # So we can pass the translated message directly.
+        self.log_message(msg) 
 
     def init_ui(self):
         self.central_widget = QWidget()
@@ -231,10 +247,47 @@ class MainWindow(QMainWindow):
         else: self.start_automation()
 
     def start_automation(self):
-        self.save_ui_to_config(); self.config_mgr.save()
+        self.save_ui_to_config()
+        try:
+             self.config_mgr.save()
+        except Exception as e:
+             self.log_message(self.i18n.get("error_save_failed").format(str(e)))
+             
         self.worker = AutomationWorker(self.config_mgr)
         self.worker.status_updated.connect(self.log_message)
         self.worker.error_occurred.connect(self.log_error)
+        self.worker.request_auto_close.connect(self.start_auto_shutdown_sequence)
+        
+        # Load auto-close config
+        self.auto_close_enabled = self.config_mgr.get("auto_close_enabled") == "True"
+        try:
+             self.auto_close_delay_seconds = int(self.config_mgr.get("auto_close_delay_seconds"))
+        except:
+             self.auto_close_delay_seconds = 10
+
+        # Pre-flight Check: Prevent starting if time is already expired (Single Day Mode)
+        # This ensures that if the worker later hits end_time, it's a natural completion (triggering auto-close),
+        # not an immediate startup error.
+        try:
+             s_h = int(self.config_mgr.get("start_hour"))
+             s_m = int(self.config_mgr.get("start_minute"))
+             s_s = int(self.config_mgr.get("start_second"))
+             e_h = int(self.config_mgr.get("end_hour"))
+             e_m = int(self.config_mgr.get("end_minute"))
+             e_s = int(self.config_mgr.get("end_second"))
+             
+             now = datetime.datetime.now().time()
+             start_t = datetime.time(s_h, s_m, s_s)
+             end_t = datetime.time(e_h, e_m, e_s)
+             
+             # Single Day Mode: Start <= End
+             if start_t <= end_t:
+                 if now > end_t:
+                     self.log_message("status_work_period_ended")
+                     return
+        except:
+             pass # Ignore check on error, let worker handle validation
+
         self.worker.start(); self.retranslateUi(); self.log_message("Started.")
 
     def stop_automation(self):
@@ -243,6 +296,9 @@ class MainWindow(QMainWindow):
 
     def log_message(self, msg):
         # Localization Hook
+        if msg == "status_work_period_ended":
+            self.stop_automation()
+
         ts = datetime.datetime.now().strftime("[%H:%M:%S]")
         translated_msg = self._translate_log(msg)
         
@@ -256,6 +312,17 @@ class MainWindow(QMainWindow):
         if msg == "Started.": return _("log_started")
         if msg == "Stopped.": return _("log_stopped")
         if msg == "Ready.": return _("log_ready")
+        if msg == "status_work_period_ended": return _("status_work_period_ended")
+        if msg.startswith("status_aligning_first_move:"):
+            # format: status_aligning_first_move:wait_s:target_s
+            try:
+                parts = msg.split(":")
+                wait_s = parts[1]
+                target_s = int(parts[2])
+                return _("status_aligning_first_move").format(wait_s, target_s)
+            except:
+                return msg
+                
         if "Moved at" in msg: return _("log_moved").format(msg.split(" at ")[-1])
         if "Outside working hours" in msg: return _("log_waiting")
         if "Theme changed to" in msg: return _("log_theme_changed").format(msg.split(" to ")[-1])
@@ -278,4 +345,52 @@ class MainWindow(QMainWindow):
             prefix = self.i18n.get("log_error_prefix")
             self.log_message(f"{prefix}{msg}")
         self.stop_automation()
-    def closeEvent(self, ev): self.stop_automation(); self.save_ui_to_config(); self.config_mgr.save(); super().closeEvent(ev)
+
+    def start_auto_shutdown_sequence(self):
+        """Initiates the countdown for auto-closing the app."""
+        if not self.auto_close_enabled:
+             self.log_message("Auto-close requested but disabled in config.")
+             self.stop_automation()
+             return
+
+        delay = self.auto_close_delay_seconds
+        self.log_message(self.i18n.get("auto_close_message").format(delay))
+        
+        self.start_btn.setEnabled(False) # Prevent re-clicking start
+        self.start_btn.setText(f"Closing in {delay}s")
+        
+        self.shutdown_countdown = delay
+        self.shutdown_timer = QTimer(self)
+        self.shutdown_timer.timeout.connect(self.on_shutdown_tick)
+        self.shutdown_timer.start(1000) # 1 second interval
+        
+        if self.worker:
+            self.worker.stop()
+            self.worker = None
+
+    def on_shutdown_tick(self):
+        self.shutdown_countdown -= 1
+        self.start_btn.setText(f"Closing in {self.shutdown_countdown}s")
+        
+        if self.shutdown_countdown <= 0:
+            self.shutdown_timer.stop()
+            self.close()
+
+    def stop_automation(self):
+        if hasattr(self, 'shutdown_timer') and self.shutdown_timer.isActive():
+            self.shutdown_timer.stop()
+            self.log_message("Auto-close cancelled.")
+            self.start_btn.setEnabled(True)
+        
+        if self.worker: self.worker.stop(); self.worker = None
+        self.retranslateUi(); self.log_message(self.i18n.get("log_stopped"))
+
+    def closeEvent(self, ev): 
+        if hasattr(self, 'shutdown_timer') and self.shutdown_timer.isActive():
+            self.shutdown_timer.stop()
+        self.stop_automation(); self.save_ui_to_config()
+        try:
+            self.config_mgr.save()
+        except Exception as e:
+            print(f"Error saving config on exit: {e}") # Can't log to UI closing
+        super().closeEvent(ev)
