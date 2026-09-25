@@ -10,8 +10,11 @@ from PySide6.QtGui import QIcon
 
 from core.config_mgr import ConfigManager, resource_path
 from core.i18n import I18n
+from core.autostart_mgr import AutoStartManager
 from ui.themes import get_stylesheet, THEMES
-from ui.widgets import GreenPillButton, CrystalCard, SunMoonToggle, parse_color
+from ui.widgets import (GreenPillButton, CrystalCard, SunMoonToggle, parse_color,
+                        AutoStartIconButton, AutostartScheduleButton)
+from ui.components.autostart_schedule_dialog import AutoStartScheduleDialog
 from ui.worker import AutomationWorker
 from ui.window_effect import window_effect
 
@@ -56,14 +59,20 @@ class MainWindow(QMainWindow):
         else:
              msg = self.i18n.get(status_key)
         
-        # We can't log yet because log_message appends to widget, but widget is ready.
-        # But log_message calls _translate_log which might not expect these keys if we don't update it?
-        # Actually _translate_log is only called if we pass a raw string.
-        # If we pass localized string directly, we should bypass _translate_log logic or make log_message smart?
-        # Check log_message: it calls _translate_log unconditionallly.
-        # But _translate_log returns original msg if no match.
-        # So we can pass the translated message directly.
         self.log_message(msg) 
+        
+        # 一旦开启开机自启（无论是开机自启拉起，还是用户手动打开），根据排程免点击自动开始运行
+        if self.autostart_btn.isChecked() or "--autostart" in sys.argv:
+            today_iso = datetime.date.today().isoweekday() # 1~7
+            schedule = self.config_mgr.get_autostart_days()
+            if schedule[today_iso - 1]:
+                self.log_message("log_autostart_triggered")
+                QTimer.singleShot(300, self.start_automation)
+            else:
+                day_names = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+                day_key = f"weekday_{day_names[today_iso - 1]}"
+                localized_day = self.i18n.get(day_key)
+                self.log_message(self.i18n.get("log_autostart_skipped_today").format(localized_day))
 
     def init_ui(self):
         self.central_widget = QWidget()
@@ -89,11 +98,23 @@ class MainWindow(QMainWindow):
         title_box.addWidget(self.title_label)
         title_box.addWidget(self.subtitle_label)
         
+        # 开机自启动圆形极客按钮 (方案 1 优化版: 绿底白字正圆形)
+        self.autostart_btn = AutoStartIconButton(theme_name=self.current_theme_name)
+        self.autostart_btn.clicked.connect(self.on_autostart_clicked)
+
+        # 开机自启动排程设置按钮 (调音台滑块微标)
+        self.autostart_settings_btn = AutostartScheduleButton(theme_name=self.current_theme_name)
+        self.autostart_settings_btn.clicked.connect(self.open_autostart_schedule_dialog)
+
         self.theme_toggle = SunMoonToggle(theme_name=self.current_theme_name)
         self.theme_toggle.clicked.connect(self.toggle_theme)
 
         header_layout.addLayout(title_box)
         header_layout.addStretch()
+        header_layout.addWidget(self.autostart_btn)
+        header_layout.addSpacing(6)
+        header_layout.addWidget(self.autostart_settings_btn)
+        header_layout.addSpacing(10)
         header_layout.addWidget(self.theme_toggle)
         self.main_layout.addLayout(header_layout)
 
@@ -177,7 +198,51 @@ class MainWindow(QMainWindow):
              self.log_content.setText(_("log_ready"))
         
         self.combo_dir.blockSignals(True); self.combo_dir.clear(); self.combo_dir.addItems([_("up"), _("down"), _("left"), _("right")]); self.combo_dir.blockSignals(False)
-        
+        self.update_autostart_tooltips()
+
+    def update_autostart_tooltips(self):
+        if hasattr(self, 'autostart_btn'):
+            is_on = self.autostart_btn.isChecked()
+            key = "tooltip_autostart_on" if is_on else "tooltip_autostart_off"
+            self.autostart_btn.setToolTip(self.i18n.get(key))
+        if hasattr(self, 'autostart_settings_btn'):
+            self.autostart_settings_btn.setToolTip(self.i18n.get("tooltip_autostart_settings"))
+
+    def open_autostart_schedule_dialog(self):
+        schedule = self.config_mgr.get_autostart_days()
+        dlg = AutoStartScheduleDialog(schedule, self.i18n, theme_name=self.current_theme_name, parent=self)
+        if dlg.exec():
+            new_schedule = dlg.get_schedule()
+            self.config_mgr.set_autostart_days(new_schedule)
+            try:
+                self.config_mgr.save()
+            except Exception as e:
+                print(f"Error saving schedule config: {e}")
+            
+            # 格式化已生效的星期显示到日志
+            day_keys = ["weekday_mon", "weekday_tue", "weekday_wed", "weekday_thu", "weekday_fri", "weekday_sat", "weekday_sun"]
+            active_names = [self.i18n.get(day_keys[i]) for i, on in enumerate(new_schedule) if on]
+            summary = ", ".join(active_names) if active_names else self.i18n.get("status_work_period_ended")
+            self.log_message(self.i18n.get("log_autostart_schedule_saved").format(summary))
+
+    def on_autostart_clicked(self):
+        enabled = self.autostart_btn.isChecked()
+        self.config_mgr.set("autostart", str(enabled))
+        try:
+            self.config_mgr.save()
+        except Exception as e:
+            print(f"Error saving config: {e}")
+            
+        success, err = AutoStartManager.set_autostart(enabled)
+        if success:
+            if enabled:
+                self.log_message("log_autostart_enabled")
+            else:
+                self.log_message("log_autostart_disabled")
+        else:
+            self.log_message(self.i18n.get("log_autostart_failed").format(err))
+        self.update_autostart_tooltips()
+
     def change_language(self, text):
         if self.i18n.set_language(text): 
             self.retranslateUi()
@@ -199,6 +264,10 @@ class MainWindow(QMainWindow):
         for card in self.findChildren(CrystalCard): card.set_theme(theme_name)
         self.start_btn.set_theme(theme_name)
         self.theme_toggle.set_theme_state(theme_name)
+        if hasattr(self, 'autostart_btn'):
+            self.autostart_btn.set_theme(theme_name)
+        if hasattr(self, 'autostart_settings_btn'):
+            self.autostart_settings_btn.set_theme(theme_name)
         
         t = THEMES[theme_name]
         self.log_content.setStyleSheet(f"color: {t['text_primary']}; padding: 8px;")
@@ -227,6 +296,22 @@ class MainWindow(QMainWindow):
         if x is not None and y is not None:
             self.move(x, y)
 
+        # 恢复开机自启状态并自动校准物理路径
+        reg_enabled = AutoStartManager.is_autostart_enabled()
+        cfg_enabled = c.get('autostart') == 'True'
+        if reg_enabled:
+            AutoStartManager.sync_path_if_moved()
+            
+        initial_autostart = reg_enabled or cfg_enabled
+        if reg_enabled != cfg_enabled:
+            c.set("autostart", str(reg_enabled))
+            try:
+                c.save()
+            except:
+                pass
+        self.autostart_btn.set_checked_silent(initial_autostart)
+        self.update_autostart_tooltips()
+
     def save_ui_to_config(self):
         c = self.config_mgr
         c.set("start_hour", self.start_h.value()); c.set("start_minute", self.start_m.value()); c.set("start_second", self.start_s.value())
@@ -237,6 +322,7 @@ class MainWindow(QMainWindow):
         idx = self.combo_dir.currentIndex()
         if 0 <= idx < 4: c.set("direction", dirs[idx])
         c.set("pixels", self.pixel_spin.value()); c.set("theme", self.current_theme_name)
+        c.set("autostart", str(self.autostart_btn.isChecked()))
         
         # Save window position
         c.set("window_x", self.pos().x())
@@ -334,6 +420,9 @@ class MainWindow(QMainWindow):
                 return _("status_skipped").format(parts)
             except:
                 return msg
+        if msg == "log_autostart_enabled": return _("log_autostart_enabled")
+        if msg == "log_autostart_disabled": return _("log_autostart_disabled")
+        if msg == "log_autostart_triggered": return _("log_autostart_triggered")
         return msg
 
     def log_error(self, msg): 

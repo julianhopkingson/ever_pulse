@@ -2,51 +2,48 @@
 
 [中文文档](README_cn.md)
 
-**v2.2**
+**v2.3**
 
 A modernized, premium utility designed to keep your Windows session active. Rebuilt with **PySide6** and "Ever Pulse" tech-navy aesthetics.
 
-![UI Preview](assets/v2.0_ui_preview.png)
+![UI Preview](assets/ui_preview.png)
 
 ## ✨ Features
 
 - **Premium UI**: "Ever Pulse" tech-navy design with Glassmorphism, real-time Dark/Light mode, and smooth animations.
-- **Integrated Logging**: Activity logs now presented in a cohesive glassmorphic card.
-- **Precision Alignment**: Automatically aligns the first move to the exact second for consistent minute-interval execution.
-- **Smart Scheduling**: 
-    - **Single Day**: Strict stop enforcement when time expires.
-    - **Cross Day**: Supports overnight sessions with configurable auto-shutdown upon completion.
-- **Improved Performance**: Systematic resource audit and optimization for minimal background footprint.
-- **Window Memory**: Automatically remembers and restores window position from previous session.
-- **Bilingual Support**: Instant switching between **English** and **Chinese**.
-- **Portable & Persistent**: Single EXE file, saves settings to `config/config.ini`.
-- **Single Instance**: Robust single-instance support—launching again wakes up the existing window.
-- **High Stability**: Robust RGB rendering and enhanced resource management prevent glitches.
+- **Autostart & Scheduling**: Native startup toggle with zero-click run, plus 7-day schedule filtering (auto-exits quietly on off days).
+- **Smart Idle Detection**: Engages only when you are away (inactivity exceeds threshold) to avoid disturbing your workflow.
+- **Precision Scheduling**: Supports start/end times with second alignment, handling both daily work hours and overnight sessions.
+- **Motion Customization**: Configurable movement directions (`Up`, `Down`, `Left`, `Right`) and customizable pixel steps.
+- **Bilingual & Memory**: Seamless switching between **English** and **Chinese**, automatically saving and restoring window position.
+- **Portable & Single Instance**: Single EXE file, saves settings to `config/config.ini`, wakes existing window if launched again.
 
 ## 🏗️ Architecture
 
 Ever Pulse follows a modular **separation of concerns** design to ensure maintainability and high performance:
 
-- **Core Engine**: Encapsulates automation logic, configuration management, and localized i18n support.
-- **Worker Threading**: Utilizes `QThread` to handle background mouse monitoring and movement, ensuring a lag-free UI experience.
-- **Glassmorphic UI Layer**: A modern interface built with PySide6, featuring custom styled widgets with real-time ARGB rendering and shadow effects.
+- **Core Engine**: Encapsulates automation logic, configuration management, autostart scheduling, and localized i18n support.
+- **Worker Threading**: Utilizes `QThread` to monitor inactivity and simulate input smoothly without blocking the UI.
+- **Glassmorphic UI Layer**: A modern interface built with PySide6, featuring custom styled widgets with real-time ARGB rendering and vector icons.
 
 ## 📂 Project Structure
 
 ```text
 ever_pulse/
-├── assets/             # Static resources (Icons, v2.2 localized strings)
-├── config/             # User specific configurations (Auto-generated)
-├── core/               # Backend logic (Automation, ConfigMgr, I18n)
-├── ui/                 # Frontend components (Themes, Crystal Widgets, Main Window)
-├── main.py             # Application entry point
-├── main.spec           # PyInstaller build specification
+├── assets/             # Static resources (Icons, language dictionaries, UI previews)
+├── config/             # User configurations (Auto-generated config.ini)
+├── core/               # Backend logic (Automation, Schedule Mgr, ConfigMgr, I18n)
+├── docs/               # Architecture design & specification documents
+├── tests/              # Unit test suite
+├── ui/                 # Frontend components (Themes, Crystal Widgets, Main Window, Dialogs)
+├── main.py             # Application entry point with CWD locking & startup guard
+└── main.spec           # PyInstaller build specification
 ```
 
 ## 🛠️ Development & Setup
 
 ### 1. Download & Run
-Download the latest compiled version from the [Releases](https://github.com/julianhopkingson/ever_pulse/releases) page. Just double-click `ever_pulse.exe` to start.
+Download the latest compiled version from the [Releases](https://github.com/julianhopkingson/ever_pulse/releases) page. Just double-click `ever_pulse.exe` to start.  
 *(Note: If you are upgrading, make sure to close the current app using `taskkill /F /IM ever_pulse.exe`)*
 
 ### 2. Build from Source
@@ -63,6 +60,9 @@ pip install -r requirements.txt
 # Run in development mode
 python main.py
 
+# Run unit tests
+python -m unittest discover tests
+
 # Build executable (Single EXE)
 pyinstaller main.spec --clean --noconfirm
 ```
@@ -71,10 +71,12 @@ pyinstaller main.spec --clean --noconfirm
 
 > **Note**: The configuration file is automatically generated at `config/config.ini` upon first run.
 
-- **Interval**: How often the mouse moves (in seconds).
-- **Idle Time**: How long you must be inactive before the tool starts moving the mouse.
-- **Direction & Pixels**: Customize the movement direction and distance.
-- **Auto Close**: Enable `auto_close_enabled` and set `auto_close_delay_seconds` (default 10s) in config.ini.
+- **autostart**: `True` / `False` for Windows startup registry integration.
+- **autostart_days**: Active days index (e.g., `1,2,3,4,5` for Mon-Fri, default).
+- **interval**: How often the mouse moves (in seconds).
+- **activity_threshold**: Inactivity duration before simulated movement begins (in seconds).
+- **direction & pixels**: Customize movement direction (`Up`, `Down`, `Left`, `Right`) and distance.
+- **auto_close_enabled**: Optional auto-shutdown upon reaching end time.
 
 ## 📄 License
 
